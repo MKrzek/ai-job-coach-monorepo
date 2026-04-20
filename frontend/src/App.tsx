@@ -18,7 +18,7 @@ export default function App() {
   const isStreaming = status === 'streaming'
   const lastRole = messages[messages.length - 1]?.role
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
     setWaitingForReply(true)
@@ -29,7 +29,7 @@ export default function App() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e as unknown as React.FormEvent)
+      handleSubmit(e as unknown as React.SubmitEvent<HTMLFormElement>)
     }
   }
 
