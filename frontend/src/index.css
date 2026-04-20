@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ca3af;
+  animation: bounce 1s ease-in-out infinite;
+}
+.dot-1 { animation-delay: 0ms; }
+.dot-2 { animation-delay: 150ms; }
+.dot-3 { animation-delay: 300ms; }
+
+.dot-pending {
+  animation: pulse 1s ease-in-out infinite;
+}
