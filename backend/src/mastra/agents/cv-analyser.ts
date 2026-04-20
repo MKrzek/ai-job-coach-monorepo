@@ -1,6 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import { jdScorerTool } from '../tools/jd-scorer-tool';
 
+
 export const cvAnalyserAgent = new Agent({
   id: 'cv-analyser',           // ← required in 1.5
   name: 'CV Analyser',

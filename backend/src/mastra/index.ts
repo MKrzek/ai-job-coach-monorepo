@@ -6,11 +6,17 @@ import { chatRoute } from '@mastra/ai-sdk';
 import { Observability, DefaultExporter, CloudExporter, SensitiveDataFilter } from '@mastra/observability';
 
 import { cvAnalyserAgent } from './agents/cv-analyser';
+import { jdScorerTool } from './tools/jd-scorer-tool';
+import { interviewPrepWorkflow } from './workflows/interview-prep';
 
 
 export const mastra = new Mastra({
   agents: {
     cvAnalyserAgent,
+  },
+  workflows: { interviewPrepWorkflow },
+  tools: {
+    jdScorerTool,
   },
   server: {
     cors: {
