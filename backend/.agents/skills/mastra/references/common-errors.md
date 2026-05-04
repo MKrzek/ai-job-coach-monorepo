@@ -1,4 +1,4 @@
-# Common errors and troubleshooting
+<!-- # Common errors and troubleshooting
 
 Comprehensive guide to common Mastra errors and their solutions.
 
@@ -534,4 +534,4 @@ npx tsc --showConfig
 1. **Check embedded docs**: Check embedded docs (see `embedded-docs.md`)
 2. **Search documentation**: [mastra.ai/docs](https://mastra.ai/docs)
 3. **Check version compatibility**: Ensure all @mastra packages are same version
-4. **File an issue**: [github.com/mastra-ai/mastra](https://github.com/mastra-ai/mastra)
+4. **File an issue**: [github.com/mastra-ai/mastra](https://github.com/mastra-ai/mastra) -->

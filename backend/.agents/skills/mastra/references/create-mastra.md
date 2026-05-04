@@ -1,4 +1,4 @@
-# Create Mastra Reference
+<!-- # Create Mastra Reference
 
 Complete guide for creating new Mastra projects. Includes both quickstart CLI method and detailed manual installation.
 
@@ -219,4 +219,4 @@ After creating your project with `create mastra`:
 - [Installation](https://mastra.ai/docs/getting-started/installation)
 - [Agents](https://mastra.ai/docs/agents/overview)
 - [Workflows](https://mastra.ai/docs/workflows/overview)
-- [GitHub](https://github.com/mastra-ai/mastra)
+- [GitHub](https://github.com/mastra-ai/mastra) -->
