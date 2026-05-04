@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PrepSession {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  jobDescription String
+  roleTitle      String
+  answers        Answer[]
+}
+
+model Answer {
+  id          String      @id @default(cuid())
+  question    String
+  type        AnswerType
+  modelAnswer String
+  keyPoints   String[]
+  session     PrepSession @relation(fields: [sessionId], references: [id])
+  sessionId   String
+}
+
+enum AnswerType {
+  behavioural
+  technical
+}
