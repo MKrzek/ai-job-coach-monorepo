@@ -3,7 +3,7 @@ import { jdScorerTool } from '../tools/jd-scorer-tool';
 
 
 export const cvAnalyserAgent = new Agent({
-  id: 'cv-analyser',           // ← required in 1.5
+  id: 'cv-analyser',
   name: 'CV Analyser',
 
   instructions: `You are an expert recruitment consultant and career coach.
@@ -24,7 +24,7 @@ export const cvAnalyserAgent = new Agent({
   - Gaps to Address (with actionable advice per gap)
   - Quick Wins (things they can do this week)`,
 
-  model: 'openai/gpt-4o-mini',  // ← model router string in 1.5, no import needed
+  model: 'openai/gpt-4o-mini',
 
   tools: { jdScorerTool },
 });
