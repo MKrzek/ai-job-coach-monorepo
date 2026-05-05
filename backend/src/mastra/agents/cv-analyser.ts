@@ -1,7 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import { jdScorerTool } from '../tools/jd-scorer-tool';
 
-
 export const cvAnalyserAgent = new Agent({
   id: 'cv-analyser',
   name: 'CV Analyser',
@@ -25,6 +24,5 @@ export const cvAnalyserAgent = new Agent({
   - Quick Wins (things they can do this week)`,
 
   model: 'openai/gpt-4o-mini',
-
   tools: { jdScorerTool },
 });
