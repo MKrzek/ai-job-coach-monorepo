@@ -1,17 +1,26 @@
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
-import { chatRoute } from '@mastra/ai-sdk';
+import { chatRoute, toAISdkStream } from '@mastra/ai-sdk';
+import { LibSQLStore } from '@mastra/libsql'
 import { Observability, DefaultExporter, CloudExporter, SensitiveDataFilter } from '@mastra/observability';
 
 import { cvAnalyserAgent } from './agents/cv-analyser';
 import { jdScorerTool } from './tools/jd-scorer-tool';
 import { interviewPrepWorkflow } from './workflows/interview-prep';
 import { prisma } from '../lib/prisma';
+import { practiceInterviewAgent } from './agents/practice-interview-agent';
+import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
+
 
 export const mastra = new Mastra({
   agents: {
     cvAnalyserAgent,
+    practiceInterviewAgent,
   },
+  storage: new LibSQLStore({
+    id: 'mastra-storage',
+    url: 'file:./mastra.db',                         // ← local SQLite in dev
+  }),
   workflows: { interviewPrepWorkflow },
   tools: {
     jdScorerTool,
@@ -96,6 +105,54 @@ export const mastra = new Mastra({
           })
           return c.json(sessions)
         },
+      },
+      // POST /api/practice-session/:sessionId/chat
+
+      {
+        path: '/api/practice-session/:sessionId/chat',
+        method: 'POST',
+        createHandler: ({ mastra }) => async (c) => {
+          try {
+            const { sessionId } = c.req.param()
+            const { messages } = await c.req.json()
+
+            if (!messages?.length) {
+              return c.json({ error: 'messages is required' }, 400)
+            }
+
+            const session = await prisma.prepSession.findUnique({
+              where: { id: sessionId },
+              select: { jobDescription: true },
+            })
+
+            const jd = session?.jobDescription
+            const agent = mastra.getAgent('practiceInterviewAgent')
+
+            const agentStream = await agent.stream(messages, {
+              instructions: jd
+                ? `You are interviewing a candidate for the following role:\n\n${jd}\n\nAsk ONE question at a time. Give brief feedback after each answer. Never repeat a question. After 5 questions give an overall summary with a score out of 10.`
+                : undefined,
+            })
+
+            const uiMessageStream = createUIMessageStream({
+              originalMessages: messages,
+              execute: async ({ writer }) => {
+                for await (const part of toAISdkStream(agentStream, {
+                  from: 'agent',
+                  version: 'v6',
+                })) {
+                  await writer.write(part)
+                }
+              },
+            })
+
+            return createUIMessageStreamResponse({ stream: uiMessageStream })
+          } catch (err) {
+            console.error('Practice session chat error:', err)
+            return c.json({ error: String(err) }, 500)
+          }
+        },
+
       },
     ],
   },
