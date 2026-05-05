@@ -1,11 +1,12 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import App from './App'
 import { InterviewPrepPage } from './pages/InterviewPrepPage'
+import { PracticeInterviewPage } from './pages/PracticeInterviewPage'
+
 
 export default function AppRouter() {
   return (
     <>
-      {/* Simple nav */}
       <nav style={{
         display: 'flex', gap: '16px', padding: '12px 24px',
         borderBottom: '1px solid #e5e7eb', fontSize: '14px',
@@ -21,6 +22,7 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/interview-prep" element={<InterviewPrepPage />} />
+        <Route path="/practice/:sessionId" element={<PracticeInterviewPage />} />
       </Routes>
     </>
   )
