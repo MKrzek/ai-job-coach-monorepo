@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useParams, Navigate } from 'react-router-dom'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { Markdown } from '../components/Markdown'
@@ -7,10 +7,15 @@ import { Markdown } from '../components/Markdown'
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4111'
 
 export function PracticeInterviewPage() {
-  const { sessionId } = useParams()
+  const { sessionId } = useParams<{ sessionId: string }>()
   const [input, setInput] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { messages, sendMessage, status } = useChat({
+  if (!sessionId) {
+    return <Navigate to="/interview-prep" replace />
+  }
+
+  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
     transport: new DefaultChatTransport({
       api: `${BASE_URL}/api/practice-session/${sessionId}/chat`,
       prepareSendMessagesRequest({ messages }) {
@@ -21,17 +26,19 @@ export function PracticeInterviewPage() {
               thread: sessionId,
               resource: 'user-1',
             },
-            // no need to pass JD — backend fetches it from DB by sessionId
           },
         }
       },
     }),
   })
-  const isLoading = status === 'submitted' || status === 'streaming'
 
-  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
+  const isLoading = status === 'submitted' || status === 'streaming'
+  const isStreaming = status === 'streaming'
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+
     sendMessage({ text: input })
     setInput('')
   }
@@ -39,9 +46,13 @@ export function PracticeInterviewPage() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e as unknown as React.SubmitEvent<HTMLFormElement>)
+      e.currentTarget.form?.requestSubmit()
     }
   }
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, status])
 
   return (
     <div className="chat-layout">
@@ -51,11 +62,20 @@ export function PracticeInterviewPage() {
       </div>
 
       <div className="messages-list">
+        {messages.length === 0 && (
+          <div className="messages-empty">
+            <div className="messages-empty-icon">🎙️</div>
+            <div>Start by greeting the interviewer or answering the first question.</div>
+          </div>
+        )}
+
         {messages.map(message => (
           <div key={message.id}>
             {message.parts?.map((part: any, i: number) => {
               if (part.type !== 'text') return null
+
               const isUser = message.role === 'user'
+
               return (
                 <div key={i} className={`message-row message-row--${isUser ? 'user' : 'assistant'}`}>
                   {!isUser && <div className="message-avatar">AI</div>}
@@ -67,6 +87,17 @@ export function PracticeInterviewPage() {
             })}
           </div>
         ))}
+
+        {error && (
+          <div className="error-banner">
+            <span>⚠️ Something went wrong in the practice interview.</span>
+            <button className="error-banner__retry" onClick={() => regenerate()}>
+              Retry
+            </button>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
       <form className="chat-form" onSubmit={handleSubmit}>
@@ -78,15 +109,26 @@ export function PracticeInterviewPage() {
           placeholder="Type your answer... (Enter to send, Shift+Enter for new line)"
           disabled={isLoading}
         />
+
         <div className="chat-form__footer">
           <span className="chat-form__hint">
-            {isLoading ? 'Agent is responding...' : 'Enter to send · Shift+Enter for new line'}
+            {isStreaming ? 'Agent is responding...' : 'Enter to send · Shift+Enter for new line'}
           </span>
-          <button type="submit" className="btn-submit" disabled={isLoading || !input.trim()}>
-            {isLoading ? 'Thinking...' : 'Send'}
-          </button>
+
+          <div className="chat-form__actions">
+            {isStreaming && (
+              <button type="button" className="btn-stop" onClick={() => stop()}>
+                ■ Stop
+              </button>
+            )}
+
+            <button type="submit" className="btn-submit" disabled={isLoading || !input.trim()}>
+              {isLoading ? 'Thinking...' : 'Send'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
   )
 }
+

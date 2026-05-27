@@ -1,22 +1,37 @@
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, NavLink } from 'react-router-dom'
 import App from './App'
 import { InterviewPrepPage } from './pages/InterviewPrepPage'
 import { PracticeInterviewPage } from './pages/PracticeInterviewPage'
 
+const navLinkStyle = ({ isActive }: { isActive: boolean }) => ({
+  color: isActive ? '#1d4ed8' : '#2563eb',
+  textDecoration: 'none',
+  fontWeight: 600,
+  padding: '8px 12px',
+  borderRadius: '8px',
+  backgroundColor: isActive ? '#eff6ff' : 'transparent',
+})
 
 export default function AppRouter() {
   return (
     <>
-      <nav style={{
-        display: 'flex', gap: '16px', padding: '12px 24px',
-        borderBottom: '1px solid #e5e7eb', fontSize: '14px',
-      }}>
-        <Link to="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>
+      <nav
+        style={{
+          display: 'flex',
+          gap: '16px',
+          padding: '12px 24px',
+          borderBottom: '1px solid #e5e7eb',
+          fontSize: '14px',
+          alignItems: 'center',
+        }}
+      >
+        <NavLink to="/" end style={navLinkStyle}>
           💼 CV Analyser
-        </Link>
-        <Link to="/interview-prep" style={{ color: '2563eb', textDecoration: 'none', fontWeight: 500 }}>
+        </NavLink>
+
+        <NavLink to="/interview-prep" style={navLinkStyle}>
           🧠 Interview Prep
-        </Link>
+        </NavLink>
       </nav>
 
       <Routes>
