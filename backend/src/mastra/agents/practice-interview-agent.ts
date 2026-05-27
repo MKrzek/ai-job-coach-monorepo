@@ -20,5 +20,9 @@ Rules you must follow:
 Start the interview by greeting the user and asking for the role they are preparing for, then begin with your first question.`,
 
   model: 'openai/gpt-4o-mini',
-  memory: new Memory(),
+  memory: new Memory({
+    options: {
+      lastMessages: 10
+    },
+  }),
 })
