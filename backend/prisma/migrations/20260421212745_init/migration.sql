@@ -25,3 +25,4 @@ CREATE TABLE "Answer" (
 
 -- AddForeignKey
 ALTER TABLE "Answer" ADD CONSTRAINT "Answer_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "PrepSession"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
