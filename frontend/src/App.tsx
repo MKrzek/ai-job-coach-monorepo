@@ -4,7 +4,8 @@ import { DefaultChatTransport } from 'ai'
 import { useState, useRef, useEffect } from 'react'
 import { Markdown } from './components/Markdown'
 import ToolCard from './components/ToolCard'
-import { UploadCvForm } from './components/UploadCVForm'
+import UploadCvForm from './components/UploadCvForm'
+
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4111'
 
@@ -17,15 +18,23 @@ export default function App() {
 
   const { messages, sendMessage, status, stop, error, regenerate } = useChat({
     transport: new DefaultChatTransport({
-      api: `${BASE_URL}/chat/cv-analyser`,
+      api: `${BASE_URL}/api/chat/cv`,
       prepareSendMessagesRequest({ messages, body }) {
+        const lastUserMessage = messages[messages.length - 1]
+        const latestText =
+          lastUserMessage?.parts
+            ?.filter((part: any) => part.type === 'text')
+            ?.map((part: any) => part.text)
+            ?.join(' ') ?? ''
+
         return {
           body: {
             messages,
             userId: body?.userId ?? 'default-user',
+            latestText,
           },
         }
-      },
+      }
     }),
   })
 

@@ -6,7 +6,7 @@ type UploadCvFormProps = {
   onUploadSuccess?: () => void
 }
 
-export function UploadCvForm({ onUploadSuccess }: UploadCvFormProps) {
+function UploadCvForm({ onUploadSuccess }: UploadCvFormProps) {
   const [cvText, setCvText] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -79,3 +79,4 @@ export function UploadCvForm({ onUploadSuccess }: UploadCvFormProps) {
   )
 }
 
+export default UploadCvForm;

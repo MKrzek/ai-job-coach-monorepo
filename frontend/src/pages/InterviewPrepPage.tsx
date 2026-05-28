@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePrepSession } from '../hooks/usePrepSession'
-import { UploadCvForm } from '../components/UploadCVForm'
+import UploadCvForm from '../components/UploadCvForm'
 
 export function InterviewPrepPage() {
   const [jd, setJd] = useState('')
