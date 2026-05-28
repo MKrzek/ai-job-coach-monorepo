@@ -23,11 +23,13 @@ import { jdScorerTool } from './tools/jd-scorer-tool';
 import { interviewPrepWorkflow } from './workflows/interview-prep';
 import { prisma } from '../lib/prisma';
 import { practiceInterviewAgent } from './agents/practice-interview-agent';
+import { cvRewriterAgent } from './agents/cv-rewriter';
 
 export const mastra = new Mastra({
   agents: {
     cvAnalyserAgent,
     practiceInterviewAgent,
+    cvRewriterAgent
   },
 
   storage: new LibSQLStore({
@@ -58,6 +60,86 @@ export const mastra = new Mastra({
 
     apiRoutes: [
       chatRoute({ path: '/chat/:agentId' }),
+
+
+      registerApiRoute('/api/chat/cv', {
+        method: 'POST',
+        handler: async (c) => {
+          try {
+            const mastra = c.get('mastra');
+            const body = await c.req.json();
+
+            const messages = body?.messages ?? [];
+            const userId = body?.userId ?? 'default-user';
+            const threadId = body?.threadId ?? `${userId}-cv-thread`;
+            const latestText = typeof body?.latestText === 'string' ? body.latestText : '';
+
+            if (!Array.isArray(messages) || messages.length === 0) {
+              return c.json({ error: 'messages is required' }, 400);
+            }
+
+            const rewriteKeywords = [
+              'rewrite',
+              'tailor',
+              'improve',
+              'rephrase',
+              'revise',
+              'reword',
+              'bullet point',
+              'bullet points',
+              'update my cv',
+              'update my bullet',
+              'rewrite my cv',
+              'tailor my cv',
+            ];
+
+            const lower = latestText.toLowerCase();
+
+            const intent = rewriteKeywords.some((keyword) => lower.includes(keyword))
+              ? 'rewrite'
+              : 'analyse';
+
+            console.log('[cv-chat] latestText:', latestText);
+            console.log('[cv-chat] Determined intent:', intent);
+
+            const agent = mastra.getAgent(
+              intent === 'rewrite' ? 'cvRewriterAgent' : 'cvAnalyserAgent'
+            );
+
+            console.log('[cv-chat] selected agent:', agent, intent);
+
+            const agentStream = await agent.stream(messages, {
+              memory: {
+                resource: userId,
+                thread: threadId,
+              },
+            });
+
+            const uiMessageStream = createUIMessageStream({
+              originalMessages: messages,
+              execute: async ({ writer }) => {
+                for await (const part of toAISdkStream(agentStream, {
+                  from: 'agent',
+                  version: 'v6',
+                })) {
+                  await writer.write(part);
+                }
+              },
+            });
+
+            return createUIMessageStreamResponse({
+              stream: uiMessageStream,
+              headers: {
+                'X-Agent-Used': intent,
+                'X-Thread-Id': threadId,
+              },
+            });
+          } catch (err) {
+            console.error('CV chat error:', err);
+            return c.json({ error: String(err) }, 500);
+          }
+        },
+      }),
 
       registerApiRoute('/api/prep-session', {
         method: 'POST',
