@@ -5,9 +5,46 @@ import { useState, useRef, useEffect } from 'react'
 import { Markdown } from './components/Markdown'
 import ToolCard from './components/ToolCard'
 import UploadCvForm from './components/UploadCvForm'
-
+import { CvAnalysisResultView } from './components/CvAnalysisResultView'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4111'
+
+type RequirementRewrite = {
+  requirement: string
+  original: string
+  revised: string
+}
+
+type MissingRequirement = {
+  requirement: string
+  reason: string
+}
+
+type RewriteBlock = {
+  withEvidence: RequirementRewrite[]
+  noEvidence: MissingRequirement[]
+}
+
+type CvAnalysisResult = {
+  score: number
+  matchingSkills: string[]
+  missingSkills: string[]
+  summary: string
+  rewriteBlock?: RewriteBlock
+}
+
+function isCvAnalysisResult(output: unknown): output is CvAnalysisResult {
+  if (!output || typeof output !== 'object') return false
+
+  const value = output as Record<string, unknown>
+
+  return (
+    typeof value.score === 'number' &&
+    Array.isArray(value.matchingSkills) &&
+    Array.isArray(value.missingSkills) &&
+    typeof value.summary === 'string'
+  )
+}
 
 export default function App() {
   const [input, setInput] = useState('')
@@ -34,7 +71,7 @@ export default function App() {
             latestText,
           },
         }
-      }
+      },
     }),
   })
 
@@ -133,6 +170,7 @@ export default function App() {
                 return (
                   <div key={i} className={`message-row message-row--${isUser ? 'user' : 'assistant'}`}>
                     {!isUser && <div className="message-avatar">AI</div>}
+
                     <div className={`message-bubble message-bubble--${isUser ? 'user' : 'assistant'}`}>
                       {isUser ? part.text : <Markdown content={part.text} />}
                     </div>
@@ -140,14 +178,35 @@ export default function App() {
                 )
               }
 
-              if (part.type.startsWith('tool-')) {
+              if (part.type?.startsWith('tool-')) {
+                const toolName = part.toolName ?? part.type.replace('tool-', '')
+                const toolOutput = part.output ?? part.result
+                const isComplete =
+                  part.state === 'result' || part.state === 'output-available'
+
+                if (
+                  isComplete &&
+                  (toolName === 'jdScorerTool' || toolName === 'cvAnalyserTool') &&
+                  isCvAnalysisResult(toolOutput)
+                ) {
+                  return (
+                    <div key={i} className="message-row message-row--assistant">
+                      <div className="message-avatar">AI</div>
+
+                      <div className="message-bubble message-bubble--assistant message-bubble--tool-result">
+                        <CvAnalysisResultView result={toolOutput} />
+                      </div>
+                    </div>
+                  )
+                }
+
                 return (
                   <ToolCard
                     key={i}
-                    toolName={part.toolName ?? part.type.replace('tool-', '')}
+                    toolName={toolName}
                     input={part.input}
-                    output={part.output}
-                    isComplete={part.state === 'result'}
+                    output={toolOutput}
+                    isComplete={isComplete}
                   />
                 )
               }
