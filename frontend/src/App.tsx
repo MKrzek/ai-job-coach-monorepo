@@ -1,50 +1,23 @@
 import './App.css'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Markdown } from './components/Markdown'
 import ToolCard from './components/ToolCard'
 import UploadCvForm from './components/UploadCvForm'
 import { CvAnalysisResultView } from './components/CvAnalysisResultView'
+import type { AppUIMessage } from './types/chat'
+import {
+  getToolInput,
+  getToolName,
+  getToolOutput,
+  isCvAnalysisResult,
+  isTextPart,
+  isToolComplete,
+  isToolPart,
+} from './types/guards'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4111'
-
-type RequirementRewrite = {
-  requirement: string
-  original: string
-  revised: string
-}
-
-type MissingRequirement = {
-  requirement: string
-  reason: string
-}
-
-type RewriteBlock = {
-  withEvidence: RequirementRewrite[]
-  noEvidence: MissingRequirement[]
-}
-
-type CvAnalysisResult = {
-  score: number
-  matchingSkills: string[]
-  missingSkills: string[]
-  summary: string
-  rewriteBlock?: RewriteBlock
-}
-
-function isCvAnalysisResult(output: unknown): output is CvAnalysisResult {
-  if (!output || typeof output !== 'object') return false
-
-  const value = output as Record<string, unknown>
-
-  return (
-    typeof value.score === 'number' &&
-    Array.isArray(value.matchingSkills) &&
-    Array.isArray(value.missingSkills) &&
-    typeof value.summary === 'string'
-  )
-}
 
 export default function App() {
   const [input, setInput] = useState('')
@@ -53,27 +26,29 @@ export default function App() {
   const [cvMessage, setCvMessage] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
-    transport: new DefaultChatTransport({
-      api: `${BASE_URL}/api/chat/cv`,
-      prepareSendMessagesRequest({ messages, body }) {
-        const lastUserMessage = messages[messages.length - 1]
-        const latestText =
-          lastUserMessage?.parts
-            ?.filter((part: any) => part.type === 'text')
-            ?.map((part: any) => part.text)
-            ?.join(' ') ?? ''
+  const { messages, sendMessage, status, stop, error, regenerate } =
+    useChat<AppUIMessage>({
+      transport: new DefaultChatTransport({
+        api: `${BASE_URL}/api/chat/cv`,
+        prepareSendMessagesRequest({ messages, body }) {
+          const lastUserMessage = messages[messages.length - 1]
 
-        return {
-          body: {
-            messages,
-            userId: body?.userId ?? 'default-user',
-            latestText,
-          },
-        }
-      },
-    }),
-  })
+          const latestText =
+            lastUserMessage?.parts
+              ?.filter(isTextPart)
+              .map(part => part.text)
+              .join(' ') ?? ''
+
+          return {
+            body: {
+              messages,
+              userId: body?.userId ?? 'default-user',
+              latestText,
+            },
+          }
+        },
+      }),
+    })
 
   const isLoading = status === 'submitted' || status === 'streaming'
   const isStreaming = status === 'streaming'
@@ -124,7 +99,7 @@ export default function App() {
   const lastMessage = messages[messages.length - 1]
   const assistantIsTyping =
     lastMessage?.role === 'assistant' &&
-    lastMessage.parts?.some((p: any) => p.type === 'text' && p.text.length > 0)
+    (lastMessage.parts?.some(isTextPart) ?? false)
 
   const showDots = waitingForReply && !assistantIsTyping
 
@@ -163,26 +138,31 @@ export default function App() {
 
         {messages.map(message => (
           <div key={message.id}>
-            {message.parts?.map((part: any, i: number) => {
-              if (part.type === 'text') {
+            {message.parts?.map((part, i) => {
+              if (isTextPart(part)) {
                 const isUser = message.role === 'user'
 
                 return (
-                  <div key={i} className={`message-row message-row--${isUser ? 'user' : 'assistant'}`}>
+                  <div
+                    key={`${message.id}-text-${i}`}
+                    className={`message-row message-row--${isUser ? 'user' : 'assistant'}`}
+                  >
                     {!isUser && <div className="message-avatar">AI</div>}
 
-                    <div className={`message-bubble message-bubble--${isUser ? 'user' : 'assistant'}`}>
+                    <div
+                      className={`message-bubble message-bubble--${isUser ? 'user' : 'assistant'}`}
+                    >
                       {isUser ? part.text : <Markdown content={part.text} />}
                     </div>
                   </div>
                 )
               }
 
-              if (part.type?.startsWith('tool-')) {
-                const toolName = part.toolName ?? part.type.replace('tool-', '')
-                const toolOutput = part.output ?? part.result
-                const isComplete =
-                  part.state === 'result' || part.state === 'output-available'
+              if (isToolPart(part)) {
+                const toolName = getToolName(part) ?? 'unknown-tool'
+                const toolInput = getToolInput(part)
+                const toolOutput = getToolOutput(part)
+                const isComplete = isToolComplete(part)
 
                 if (
                   isComplete &&
@@ -190,7 +170,10 @@ export default function App() {
                   isCvAnalysisResult(toolOutput)
                 ) {
                   return (
-                    <div key={i} className="message-row message-row--assistant">
+                    <div
+                      key={`${message.id}-tool-${i}`}
+                      className="message-row message-row--assistant"
+                    >
                       <div className="message-avatar">AI</div>
 
                       <div className="message-bubble message-bubble--assistant message-bubble--tool-result">
@@ -202,9 +185,9 @@ export default function App() {
 
                 return (
                   <ToolCard
-                    key={i}
+                    key={`${message.id}-toolcard-${i}`}
                     toolName={toolName}
-                    input={part.input}
+                    input={toolInput}
                     output={toolOutput}
                     isComplete={isComplete}
                   />
@@ -256,12 +239,20 @@ export default function App() {
 
           <div className="chat-form__actions">
             {isStreaming && (
-              <button type="button" className="btn-stop" onClick={() => stop()}>
+              <button
+                type="button"
+                className="btn-stop"
+                onClick={() => stop()}
+              >
                 ■ Stop
               </button>
             )}
 
-            <button type="submit" className="btn-submit" disabled={isLoading || !input.trim()}>
+            <button
+              type="submit"
+              className="btn-submit"
+              disabled={isLoading || !input.trim()}
+            >
               {isLoading ? 'Thinking...' : 'Analyse'}
             </button>
           </div>
