@@ -25,11 +25,42 @@ import { prisma } from '../lib/prisma';
 import { practiceInterviewAgent } from './agents/practice-interview-agent';
 import { cvRewriterAgent } from './agents/cv-rewriter';
 
+export function detectCvIntent(text: string): 'rewrite' | 'analyse' {
+  const rewriteKeywords = [
+    'rewrite',
+    'tailor',
+    'improve',
+    'rephrase',
+    'revise',
+    'reword',
+    'bullet point',
+    'bullet points',
+    'update my cv',
+    'update my bullet',
+    'rewrite my cv',
+    'tailor my cv',
+  ];
+  return rewriteKeywords.some((kw) => text.toLowerCase().includes(kw))
+    ? 'rewrite'
+    : 'analyse';
+}
+
+export function validateUploadCvBody(body: unknown):
+  | { valid: true; cvText: string; userId: string }
+  | { valid: false; error: string } {
+  const b = body as Record<string, unknown>;
+  const cvText = typeof b?.cvText === 'string' ? b.cvText.trim() : '';
+  if (!cvText) return { valid: false, error: 'cvText is required' };
+  return { valid: true, cvText, userId: (b?.userId as string) ?? 'default-user' };
+}
+
+// ── Mastra instance ───────────────────────────────────────────────────────────
+
 export const mastra = new Mastra({
   agents: {
     cvAnalyserAgent,
     practiceInterviewAgent,
-    cvRewriterAgent
+    cvRewriterAgent,
   },
 
   storage: new LibSQLStore({
@@ -61,7 +92,27 @@ export const mastra = new Mastra({
     apiRoutes: [
       chatRoute({ path: '/chat/:agentId' }),
 
+      registerApiRoute('/api/debug-cv', {
+        method: 'POST',
+        handler: async (c) => {
+          const mastra = c.get('mastra');
+          const body = await c.req.json();
+          const userId = body?.userId ?? 'default-user';
+          const vectorStore = mastra.getVector('pgVector');
 
+          const results = await vectorStore.query({
+            indexName: 'cv_embeddings',
+            queryVector: new Array(1536).fill(0),
+            topK: 5,
+            filter: { userId },
+            includeVector: false,
+          });
+
+          return c.json({ userId, chunks: results.map((r: any) => r.metadata) });
+        },
+      }),
+
+      // ── CV CHAT: intent detection → analyser or rewriter ───────────────────
       registerApiRoute('/api/chat/cv', {
         method: 'POST',
         handler: async (c) => {
@@ -72,32 +123,14 @@ export const mastra = new Mastra({
             const messages = body?.messages ?? [];
             const userId = body?.userId ?? 'default-user';
             const threadId = body?.threadId ?? `${userId}-cv-thread`;
-            const latestText = typeof body?.latestText === 'string' ? body.latestText : '';
+            const latestText =
+              typeof body?.latestText === 'string' ? body.latestText : '';
 
             if (!Array.isArray(messages) || messages.length === 0) {
               return c.json({ error: 'messages is required' }, 400);
             }
 
-            const rewriteKeywords = [
-              'rewrite',
-              'tailor',
-              'improve',
-              'rephrase',
-              'revise',
-              'reword',
-              'bullet point',
-              'bullet points',
-              'update my cv',
-              'update my bullet',
-              'rewrite my cv',
-              'tailor my cv',
-            ];
-
-            const lower = latestText.toLowerCase();
-
-            const intent = rewriteKeywords.some((keyword) => lower.includes(keyword))
-              ? 'rewrite'
-              : 'analyse';
+            const intent = detectCvIntent(latestText);
 
             console.log('[cv-chat] latestText:', latestText);
             console.log('[cv-chat] Determined intent:', intent);
@@ -106,7 +139,7 @@ export const mastra = new Mastra({
               intent === 'rewrite' ? 'cvRewriterAgent' : 'cvAnalyserAgent'
             );
 
-            console.log('[cv-chat] selected agent:', agent, intent);
+            console.log('[cv-chat] selected agent:', agent.name, intent);
 
             const agentStream = await agent.stream(messages, {
               memory: {
@@ -141,6 +174,7 @@ export const mastra = new Mastra({
         },
       }),
 
+      // ── INTERVIEW PREP: generate session from JD ───────────────────────────
       registerApiRoute('/api/prep-session', {
         method: 'POST',
         handler: async (c) => {
@@ -215,6 +249,7 @@ export const mastra = new Mastra({
         },
       }),
 
+      // ── PRACTICE INTERVIEW: streaming agent chat per session ───────────────
       registerApiRoute('/api/practice-session/:sessionId/chat', {
         method: 'POST',
         handler: async (c) => {
@@ -267,18 +302,20 @@ export const mastra = new Mastra({
         },
       }),
 
+      // ── UPLOAD CV: chunk, embed, delete old, upsert new ───────────────────
       registerApiRoute('/api/upload-cv', {
         method: 'POST',
         handler: async (c) => {
           try {
             const mastra = c.get('mastra');
-            const body = await c.req.json();
-            const cvText = body?.cvText?.trim();
-            const userId = body?.userId ?? 'default-user';
+            const rawBody = await c.req.json();
 
-            if (!cvText) {
-              return c.json({ error: 'cvText is required' }, 400);
+            const validation = validateUploadCvBody(rawBody);
+            if (!validation.valid) {
+              return c.json({ error: validation.error }, 400);
             }
+
+            const { cvText, userId } = validation;
 
             const doc = MDocument.fromText(cvText);
 
@@ -295,6 +332,32 @@ export const mastra = new Mastra({
 
             const vectorStore = mastra.getVector('pgVector');
 
+            try {
+              const existing = await vectorStore.query({
+                indexName: 'cv_embeddings',
+                queryVector: new Array(1536).fill(0),
+                topK: 1000,
+                filter: { userId },
+                includeVector: false,
+              });
+
+              const idsToDelete = existing
+                .map((r: any) => r.id)
+                .filter(Boolean);
+
+              if (idsToDelete.length > 0) {
+                await vectorStore.deleteVectors({
+                  indexName: 'cv_embeddings',
+                  ids: idsToDelete,
+                });
+                console.log(
+                  `[upload-cv] Deleted ${idsToDelete.length} existing chunks for userId: ${userId}`
+                );
+              }
+            } catch (err) {
+              console.warn('[upload-cv] Could not clear existing chunks:', err);
+            }
+
             await vectorStore.upsert({
               indexName: 'cv_embeddings',
               vectors: embeddings,
@@ -305,6 +368,10 @@ export const mastra = new Mastra({
                 chunkIndex: index,
               })),
             });
+
+            console.log(
+              `[upload-cv] Stored ${chunks.length} new chunks for userId: ${userId}`
+            );
 
             return c.json({
               success: true,
