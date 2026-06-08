@@ -1,26 +1,28 @@
-// test/utils/mastra-test-mocks.ts
 import { vi } from 'vitest';
+import { mastra } from '../../mastra/index.js';
 
-type MockFn = ReturnType<typeof vi.fn>;
-
-type MastraTestMocks = {
-  mockQuery: MockFn;
-  mockUpsert: MockFn;
-  mockCreateIndex: MockFn;
-  mockDeleteIndex: MockFn;
-  mockDescribeIndex: MockFn;
-  mockDeleteByFilter: MockFn;
-  mockSetLogger: MockFn;
+export type MastraTestMocks = {
+  mockQuery: ReturnType<typeof vi.fn>;
+  mockUpsert: ReturnType<typeof vi.fn>;
+  mockDeleteVectors: ReturnType<typeof vi.fn>;
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __mastraTestMocks__: MastraTestMocks | undefined;
-}
+const mockQuery = vi.fn();
+const mockUpsert = vi.fn();
+const mockDeleteVectors = vi.fn();
+
+const mockVectorStore = {
+  query: mockQuery,
+  upsert: mockUpsert,
+  deleteVectors: mockDeleteVectors,
+};
+
+vi.spyOn(mastra, 'getVector').mockReturnValue(mockVectorStore as any);
 
 export function getMastraTestMocks(): MastraTestMocks {
-  if (!globalThis.__mastraTestMocks__) {
-    throw new Error('Mastra test mocks have not been initialized.');
-  }
-  return globalThis.__mastraTestMocks__;
+  return {
+    mockQuery,
+    mockUpsert,
+    mockDeleteVectors,
+  };
 }
