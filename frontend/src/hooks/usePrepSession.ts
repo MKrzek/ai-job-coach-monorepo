@@ -39,14 +39,14 @@ export const usePrepSession = () => {
   }
 
   const runSession = (jobDescription: string) =>
-    request(`${BASE_URL}/api/prep-session`, {
+    request(`${BASE_URL}/custom/prep-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jobDescription }),
     })
 
   const fetchSession = (id: string) =>
-    request(`${BASE_URL}/api/prep-session/${id}`)
+    request(`${BASE_URL}/custom/prep-session/${id}`)
 
   return { runSession, fetchSession, session, loading, error }
 }

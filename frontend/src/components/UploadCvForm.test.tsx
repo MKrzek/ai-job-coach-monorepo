@@ -29,7 +29,7 @@ describe('<UploadCvForm />', () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it('calls /api/upload-cv with correct payload and shows success message', async () => {
+  it('calls /custom/upload-cv with correct payload and shows success message', async () => {
     const mockOnUploadSuccess = vi.fn();
 
     (globalThis.fetch as any).mockResolvedValueOnce({
@@ -57,7 +57,7 @@ describe('<UploadCvForm />', () => {
     const fetchMock = globalThis.fetch as any;
     const [url, options] = fetchMock.mock.calls[0];
 
-    expect(url).toBe(`${BASE_URL}/api/upload-cv`);
+    expect(url).toBe(`${BASE_URL}/custom/upload-cv`);
     expect(options).toEqual(
       expect.objectContaining({
         method: 'POST',

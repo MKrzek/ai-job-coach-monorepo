@@ -17,7 +17,7 @@ export function PracticeInterviewPage() {
 
   const { messages, sendMessage, status, stop, error, regenerate } = useChat({
     transport: new DefaultChatTransport({
-      api: `${BASE_URL}/api/practice-session/${sessionId}/chat`,
+      api: `${BASE_URL}/custom/practice-session/${sessionId}/chat`,
       prepareSendMessagesRequest({ messages }) {
         return {
           body: {

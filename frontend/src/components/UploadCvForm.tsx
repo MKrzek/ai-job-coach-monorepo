@@ -23,7 +23,7 @@ function UploadCvForm({ onUploadSuccess }: UploadCvFormProps) {
       setLoading(true)
       setMessage('')
 
-      const response = await fetch(`${BASE_URL}/api/upload-cv`, {
+      const response = await fetch(`${BASE_URL}/custom/upload-cv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

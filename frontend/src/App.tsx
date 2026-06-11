@@ -29,7 +29,7 @@ export default function App() {
   const { messages, sendMessage, status, stop, error, regenerate } =
     useChat<AppUIMessage>({
       transport: new DefaultChatTransport({
-        api: `${BASE_URL}/api/chat/cv`,
+        api: `${BASE_URL}/custom/chat/cv`,
         prepareSendMessagesRequest({ messages, body }) {
           const lastUserMessage = messages[messages.length - 1]
 
