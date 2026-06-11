@@ -44,5 +44,8 @@
     "tsx": "^4.22.3",
     "typescript": "^6.0.2",
     "vitest": "^4.1.8"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.52.5"
   }
 }
