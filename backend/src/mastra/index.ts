@@ -73,8 +73,9 @@ export const mastra = new Mastra({
 
   server: {
     cors: {
-      origin: FRONTEND_URL,
+      origin: [FRONTEND_URL, 'https://ai-job-coach-monorepo.vercel.app'],
       allowMethods: ['GET', 'POST', 'OPTIONS'],
+      credentials: true,
     },
 
     apiRoutes: [
