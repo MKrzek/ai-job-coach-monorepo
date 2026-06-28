@@ -16,6 +16,8 @@ COPY . .
 
 RUN npx prisma generate
 
+RUN npm run build
+
 ENV NODE_ENV=production
 ENV PORT=4111
 EXPOSE 4111
